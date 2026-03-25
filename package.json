@@ -1,0 +1,9 @@
+{
+  "name": "flowmove-booking",
+  "version": "1.0.0",
+  "private": true,
+  "description": "FlowMove Pilates and yoga booking system",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

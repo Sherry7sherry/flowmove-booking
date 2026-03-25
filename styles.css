@@ -1,0 +1,898 @@
+:root {
+  --bg: #f5efe6;
+  --bg-soft: #efe3d3;
+  --surface: rgba(255, 251, 246, 0.78);
+  --surface-strong: #fffaf3;
+  --surface-warm: rgba(244, 233, 216, 0.7);
+  --surface-dark: #17322b;
+  --line: rgba(23, 50, 43, 0.12);
+  --line-strong: rgba(23, 50, 43, 0.24);
+  --text: #193028;
+  --muted: #67766f;
+  --accent: #db6f52;
+  --accent-deep: #b85137;
+  --sage: #6f8f76;
+  --olive: #3f5b48;
+  --sand: #f3dfc0;
+  --danger: #b6493d;
+  --glow: 0 18px 40px rgba(184, 81, 55, 0.09);
+  --shadow: 0 24px 80px rgba(39, 45, 40, 0.12);
+  --radius-xl: 32px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Outfit", sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(219, 111, 82, 0.22), transparent 24%),
+    radial-gradient(circle at right 20%, rgba(111, 143, 118, 0.2), transparent 24%),
+    linear-gradient(180deg, var(--bg-soft) 0%, var(--bg) 42%, #f3ecdf 100%);
+}
+
+body::before {
+  position: fixed;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(25, 48, 40, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(25, 48, 40, 0.04) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.3), transparent 68%);
+}
+
+.page-shell {
+  width: min(1200px, calc(100% - 28px));
+  margin: 0 auto;
+  padding: 24px 0 56px;
+}
+
+.hero,
+.stats-strip,
+.filters-card,
+.results-panel,
+.insight-card,
+.records-panel {
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.hero {
+  padding: 28px;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 249, 242, 0.66);
+  backdrop-filter: blur(18px);
+}
+
+.topbar,
+.hero-grid,
+.section-heading,
+.dashboard-grid,
+.results-header,
+.insight-layout {
+  display: grid;
+  gap: 24px;
+}
+
+.topbar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  font-weight: 700;
+  color: #fff9f2;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+}
+
+.brand h1,
+.hero-copy h2,
+.section-heading h2,
+.results-header h3,
+.insight-card h3,
+.records-panel h3,
+.brief-card h3,
+.teacher-card h4 {
+  margin: 0;
+}
+
+.eyebrow,
+.kicker,
+.panel-label,
+.tag {
+  margin: 0;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.ghost-button,
+.primary-button,
+.secondary-button {
+  border-radius: 999px;
+  text-decoration: none;
+  font: inherit;
+  cursor: pointer;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.ghost-button,
+.secondary-button {
+  justify-self: end;
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.primary-button {
+  border: none;
+  color: #fffaf3;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  box-shadow: var(--glow);
+}
+
+.ghost-button:hover,
+.primary-button:hover,
+.secondary-button:hover,
+.slot-button:hover,
+.slot-chip button:hover,
+.schedule-entry button:hover {
+  transform: translateY(-1px);
+}
+
+.ghost-button,
+.primary-button,
+.secondary-button,
+.slot-button,
+.compact-button {
+  padding: 12px 18px;
+}
+
+.compact-button {
+  padding: 10px 14px;
+}
+
+.block-button {
+  width: 100%;
+  justify-self: stretch;
+}
+
+.hero-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+  margin-top: 38px;
+  align-items: end;
+}
+
+.hero-copy h2 {
+  max-width: 8ch;
+  font-family: "Noto Serif SC", serif;
+  font-size: clamp(2.7rem, 7vw, 5.1rem);
+  line-height: 1.02;
+  font-weight: 600;
+}
+
+.hero-text,
+.section-copy,
+.brief-card p,
+.panel-metric p,
+.helper-text,
+.teacher-meta,
+.booking-meta,
+label,
+input,
+select,
+textarea {
+  color: var(--muted);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.hero-preview {
+  display: grid;
+  gap: 16px;
+}
+
+.hero-panel,
+.brief-card,
+.filters-card,
+.results-panel,
+.insight-card,
+.records-panel,
+.teacher-card,
+.slot-chip,
+.schedule-entry,
+.record-card {
+  background: var(--surface);
+  backdrop-filter: blur(10px);
+}
+
+.hero-panel {
+  padding: 24px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.46), transparent 34%),
+    rgba(255, 250, 244, 0.56);
+}
+
+.phone-frame {
+  position: relative;
+  width: min(100%, 340px);
+  margin-left: auto;
+  padding: 18px 14px 14px;
+  border-radius: 34px;
+  border: 1px solid rgba(23, 50, 43, 0.18);
+  background:
+    linear-gradient(180deg, rgba(40, 55, 49, 0.98) 0%, rgba(21, 35, 31, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(20, 31, 27, 0.25);
+}
+
+.phone-notch {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 34%;
+  height: 18px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  background: rgba(9, 16, 14, 0.92);
+}
+
+.preview-card {
+  display: grid;
+  gap: 14px;
+  min-height: 460px;
+  padding: 20px 18px 18px;
+  border-radius: 26px;
+  border: 1px solid rgba(23, 50, 43, 0.08);
+  background:
+    radial-gradient(circle at top right, rgba(219, 111, 82, 0.18), transparent 28%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.98) 0%, rgba(244, 233, 216, 0.84) 100%);
+}
+
+.preview-header,
+.hero-mini-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.preview-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.preview-day {
+  margin: 0 0 4px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.preview-header strong,
+.preview-list strong,
+.hero-mini-stats strong {
+  color: var(--text);
+}
+
+.preview-list {
+  display: grid;
+  gap: 10px;
+}
+
+.preview-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.preview-list article.is-active {
+  border-color: rgba(219, 111, 82, 0.26);
+  background: rgba(255, 247, 241, 0.92);
+  box-shadow: 0 12px 24px rgba(184, 81, 55, 0.08);
+}
+
+.preview-list p,
+.preview-list span,
+.hero-mini-stats span {
+  margin: 0;
+  color: var(--muted);
+}
+
+.preview-summary {
+  display: grid;
+  gap: 12px;
+  margin-top: auto;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(23, 50, 43, 0.92);
+}
+
+.preview-summary span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.82rem;
+  color: rgba(247, 240, 230, 0.72);
+}
+
+.preview-summary strong {
+  color: #f7f0e6;
+}
+
+.preview-summary button {
+  border: none;
+  padding: 13px 16px;
+  border-radius: 999px;
+  color: #fffaf3;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  font: inherit;
+  cursor: pointer;
+}
+
+.hero-mini-stats {
+  align-items: stretch;
+}
+
+.hero-mini-stats div {
+  flex: 1;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.panel-metric {
+  margin: 16px 0 20px;
+}
+
+.panel-metric span {
+  display: block;
+  font-size: 4rem;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.signal-list,
+.schedule-list,
+.booking-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signal-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.signal-list strong {
+  font-size: 1.45rem;
+}
+
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  padding: 18px;
+  margin: 26px 0 48px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(219, 111, 82, 0.12), transparent 28%),
+    rgba(255, 249, 242, 0.66);
+}
+
+.stats-strip article {
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94) 0%, rgba(243, 231, 213, 0.82) 100%);
+  box-shadow: 0 14px 28px rgba(23, 50, 43, 0.06);
+}
+
+.stats-strip h3 {
+  margin: 6px 0;
+  font-size: 1.45rem;
+}
+
+.stats-strip p,
+.stats-strip span {
+  margin: 0;
+  color: var(--muted);
+}
+
+.section-heading {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.secondary-heading {
+  margin-top: 48px;
+}
+
+.dashboard-grid {
+  grid-template-columns: minmax(280px, 330px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.filters-card,
+.results-panel,
+.insight-card,
+.records-panel {
+  border-radius: var(--radius-lg);
+}
+
+.filters-card,
+.results-panel,
+.insight-card {
+  padding: 24px;
+}
+
+.filters-card,
+.teacher-manager,
+.booking-form {
+  display: grid;
+  gap: 18px;
+}
+
+.filters-card,
+.results-panel,
+.insight-card,
+.records-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(219, 111, 82, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.88) 0%, rgba(244, 234, 219, 0.72) 100%);
+}
+
+.filters-card::before,
+.results-panel::before,
+.insight-card::before,
+.records-panel::before {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 1px;
+  content: "";
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.65), transparent 72%);
+}
+
+.field-group {
+  display: grid;
+  gap: 10px;
+}
+
+label {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 253, 250, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  font: inherit;
+  appearance: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid rgba(219, 111, 82, 0.18);
+  border-color: rgba(219, 111, 82, 0.45);
+}
+
+select:disabled,
+input:disabled,
+textarea:disabled,
+button:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.login-card,
+.brief-card,
+.session-card,
+.demo-card,
+.form-preview {
+  padding: 18px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.95) 0%, rgba(244, 235, 223, 0.78) 100%);
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 24px rgba(23, 50, 43, 0.05);
+}
+
+.auth-tabs {
+  gap: 16px;
+}
+
+.tab-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.tab-button {
+  padding: 12px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  color: #fffaf3;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+}
+
+.hidden {
+  display: none !important;
+}
+
+.results-header,
+.records-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border-radius: 999px;
+}
+
+.available {
+  background: var(--sage);
+}
+
+.booked {
+  background: rgba(182, 73, 61, 0.72);
+}
+
+.teacher-grid,
+.booking-list {
+  display: grid;
+  gap: 16px;
+}
+
+.teacher-card {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96) 0%, rgba(243, 231, 214, 0.76) 100%);
+  box-shadow: 0 16px 32px rgba(23, 50, 43, 0.07);
+  animation: rise 420ms ease both;
+}
+
+.teacher-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.teacher-head strong,
+.booking-preview strong {
+  display: block;
+  font-size: 1.15rem;
+}
+
+.teacher-meta,
+.slot-empty,
+.empty-state {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.teacher-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.slot-group {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.slot-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.slot-button,
+.slot-chip button,
+.schedule-entry button {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.slot-button {
+  color: var(--olive);
+  background: rgba(111, 143, 118, 0.16);
+}
+
+.slot-button:disabled {
+  opacity: 0.58;
+  color: var(--danger);
+  background: rgba(182, 73, 61, 0.1);
+  cursor: not-allowed;
+}
+
+.slot-button.selected {
+  border-color: rgba(219, 111, 82, 0.4);
+  color: #fffaf3;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  box-shadow: var(--glow);
+}
+
+.slot-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.slot-chip button,
+.schedule-entry button {
+  padding: 8px 12px;
+  color: var(--danger);
+  background: rgba(182, 73, 61, 0.1);
+}
+
+.form-preview {
+  min-height: 92px;
+  display: grid;
+  align-items: center;
+  background:
+    linear-gradient(180deg, rgba(23, 50, 43, 0.96) 0%, rgba(33, 57, 50, 0.92) 100%);
+}
+
+.form-preview,
+.form-preview .booking-meta,
+.form-preview strong {
+  color: #f7f0e6;
+}
+
+.insight-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 24px;
+}
+
+.schedule-entry,
+.record-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 246, 0.94) 0%, rgba(242, 232, 216, 0.78) 100%);
+  box-shadow: 0 12px 28px rgba(23, 50, 43, 0.06);
+}
+
+.schedule-head,
+.record-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: start;
+}
+
+.records-panel {
+  padding: 24px;
+}
+
+.booking-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.record-card p,
+.record-card h4 {
+  margin: 0;
+}
+
+.record-details {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  line-height: 1.6;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.booking-meta strong,
+.record-details strong {
+  color: var(--text);
+}
+
+.empty-state {
+  padding: 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 960px) {
+  .hero-grid,
+  .section-heading,
+  .dashboard-grid,
+  .insight-layout,
+  .booking-list {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  .ghost-button {
+    justify-self: start;
+  }
+
+  .phone-frame {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-shell {
+    width: min(100% - 18px, 100%);
+    padding-top: 14px;
+  }
+
+  .hero,
+  .filters-card,
+  .results-panel,
+  .insight-card,
+  .records-panel {
+    padding: 18px;
+  }
+
+  .stats-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-copy h2 {
+    max-width: none;
+    font-size: clamp(2.2rem, 10vw, 3.6rem);
+  }
+
+  .results-header,
+  .records-header,
+  .teacher-head,
+  .schedule-head,
+  .record-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .legend,
+  .teacher-stats,
+  .slot-row,
+  .hero-actions {
+    gap: 8px;
+  }
+
+  .ghost-button,
+  .primary-button,
+  .secondary-button,
+  .slot-button,
+  .compact-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
