@@ -38,53 +38,49 @@
           </div>
 
           <aside class="hero-panel hero-preview">
-            <p class="panel-label">移动端预览</p>
-            <div class="phone-frame">
-              <div class="phone-notch"></div>
-              <div class="preview-card">
-                <div class="preview-topline">
-                  <span>今天可约</span>
-                  <strong>FlowMove</strong>
+            <div class="preview-card">
+              <div class="preview-topline">
+                <span>今天可约</span>
+                <strong>FlowMove</strong>
+              </div>
+              <div class="preview-header">
+                <div>
+                  <p class="preview-day">3月27日 周五</p>
+                  <strong>晚间上门私教</strong>
                 </div>
-                <div class="preview-header">
-                  <div>
-                    <p class="preview-day">3月25日 周三</p>
-                    <strong>晚间上门私教</strong>
-                  </div>
-                  <span class="tag">1 对 1</span>
-                </div>
+                <span class="tag">1 对 1</span>
+              </div>
 
-                <div class="preview-list">
-                  <article class="is-active">
-                    <div>
-                      <strong>Tina</strong>
-                      <p>普拉提塑形</p>
-                    </div>
-                    <span>19:00-20:00</span>
-                  </article>
-                  <article>
-                    <div>
-                      <strong>Mia</strong>
-                      <p>瑜伽伸展</p>
-                    </div>
-                    <span>16:30-17:30</span>
-                  </article>
-                  <article>
-                    <div>
-                      <strong>Zoe</strong>
-                      <p>功能训练融合</p>
-                    </div>
-                    <span>20:15-21:15</span>
-                  </article>
-                </div>
-
-                <div class="preview-summary">
+              <div class="preview-list">
+                <article class="is-active">
                   <div>
-                    <span>上门区域</span>
-                    <strong>浦东新区丁香路</strong>
+                    <strong>Tina</strong>
+                    <p>普拉提塑形</p>
                   </div>
-                  <button type="button">确认预约</button>
+                  <span>19:00-20:00</span>
+                </article>
+                <article>
+                  <div>
+                    <strong>Mia</strong>
+                    <p>瑜伽伸展</p>
+                  </div>
+                  <span>16:30-17:30</span>
+                </article>
+                <article>
+                  <div>
+                    <strong>Zoe</strong>
+                    <p>功能训练融合</p>
+                  </div>
+                  <span>20:15-21:15</span>
+                </article>
+              </div>
+
+              <div class="preview-summary">
+                <div>
+                  <span>上门区域</span>
+                  <strong>浦东新区丁香路</strong>
                 </div>
+                <button type="button">确认预约</button>
               </div>
             </div>
 
@@ -128,10 +124,10 @@
         <section class="section-heading" id="booking">
           <div>
             <p class="kicker">学生端</p>
-            <h2>按身份登录后，完成排班、查看和预约的完整流程。</h2>
+            <h2>像预约 App 一样，直接选老师和时间。</h2>
           </div>
           <p class="section-copy">
-            学生、老师和管理员都可以在这个单页中完成主要操作。示例账号已内置，适合直接测试业务流程和部署演示。
+            登录后即可查看空档、填写上门信息并完成定金流程。
           </p>
         </section>
 
@@ -213,7 +209,7 @@
             <article class="brief-card">
               <p class="panel-label">上线说明</p>
               <h3>当前已具备基础可用能力</h3>
-              <p>支持服务端登录、老师排班、学生预约、时段占用校验和预约记录保存。后续可继续接支付、短信提醒和企业微信通知。</p>
+              <p>支持服务端登录、老师排班、学生预约、时段占用校验和预约记录保存。支付已经预留微信和支付宝接入口，等商户资料到位后可继续接真实收款。</p>
             </article>
           </aside>
 
@@ -236,13 +232,20 @@
         <section class="insight-layout">
           <article class="insight-card booking-card">
             <p class="panel-label">学生预约</p>
-            <h3>学生登录后，选中时段并提交上门信息</h3>
+            <h3>确认时段后，分步填写预约信息</h3>
             <form id="booking-form" class="booking-form">
               <div class="form-preview" id="selected-slot">
                 请先在右侧老师卡片中选择一个空余时间。
               </div>
 
-              <div class="field-group">
+              <div class="form-section">
+                <div class="form-section-head">
+                  <span class="step-badge">01</span>
+                  <div>
+                    <strong>身体情况</strong>
+                    <p>帮助老师提前了解你的状态</p>
+                  </div>
+                </div>
                 <label for="body-notes">身体情况</label>
                 <textarea
                   id="body-notes"
@@ -251,7 +254,14 @@
                 ></textarea>
               </div>
 
-              <div class="field-group">
+              <div class="form-section">
+                <div class="form-section-head">
+                  <span class="step-badge">02</span>
+                  <div>
+                    <strong>课程目标</strong>
+                    <p>告诉老师这次最想解决什么</p>
+                  </div>
+                </div>
                 <label for="goal-notes">想解决的问题</label>
                 <textarea
                   id="goal-notes"
@@ -260,7 +270,14 @@
                 ></textarea>
               </div>
 
-              <div class="field-group">
+              <div class="form-section">
+                <div class="form-section-head">
+                  <span class="step-badge">03</span>
+                  <div>
+                    <strong>上门地址</strong>
+                    <p>请至少填写到区和街名</p>
+                  </div>
+                </div>
                 <label for="address">上门地址</label>
                 <textarea
                   id="address"
@@ -269,8 +286,40 @@
                 ></textarea>
               </div>
 
-              <button class="primary-button block-button" type="submit">确认预约</button>
-              <p class="helper-text" id="booking-status">学生登录后即可提交预约。</p>
+              <div class="form-section">
+                <div class="form-section-head">
+                  <span class="step-badge">04</span>
+                  <div>
+                    <strong>支付定金</strong>
+                    <p>选择支付方式并确认金额</p>
+                  </div>
+                </div>
+                <label>定金支付方式</label>
+                <div class="payment-options" id="payment-options">
+                  <label class="payment-option">
+                    <input type="radio" name="payment-method" value="wechat" />
+                    <span>
+                      <strong>微信支付</strong>
+                      <small>提交预约后支付 20% 定金</small>
+                    </span>
+                  </label>
+                  <label class="payment-option">
+                    <input type="radio" name="payment-method" value="alipay" />
+                    <span>
+                      <strong>支付宝</strong>
+                      <small>提交预约后支付 20% 定金</small>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="booking-submit-bar">
+                <div class="deposit-summary" id="deposit-summary">
+                  请选择时段后查看本次课程定金金额。
+                </div>
+                <button class="primary-button block-button" type="submit">确认预约并支付定金</button>
+                <p class="helper-text" id="booking-status">学生登录后即可提交预约并完成 20% 定金支付。</p>
+              </div>
             </form>
           </article>
 

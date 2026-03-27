@@ -247,41 +247,19 @@ textarea {
     rgba(255, 250, 244, 0.56);
 }
 
-.phone-frame {
-  position: relative;
-  width: min(100%, 340px);
-  margin-left: auto;
-  padding: 18px 14px 14px;
-  border-radius: 34px;
-  border: 1px solid rgba(23, 50, 43, 0.18);
-  background:
-    linear-gradient(180deg, rgba(40, 55, 49, 0.98) 0%, rgba(21, 35, 31, 0.98) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 24px 60px rgba(20, 31, 27, 0.25);
-}
-
-.phone-notch {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  width: 34%;
-  height: 18px;
-  border-radius: 999px;
-  transform: translateX(-50%);
-  background: rgba(9, 16, 14, 0.92);
-}
-
 .preview-card {
   display: grid;
   gap: 14px;
-  min-height: 460px;
+  min-height: 430px;
+  width: min(100%, 360px);
+  margin-left: auto;
   padding: 20px 18px 18px;
   border-radius: 26px;
   border: 1px solid rgba(23, 50, 43, 0.08);
   background:
     radial-gradient(circle at top right, rgba(219, 111, 82, 0.18), transparent 28%),
     linear-gradient(180deg, rgba(255, 252, 246, 0.98) 0%, rgba(244, 233, 216, 0.84) 100%);
+  box-shadow: 0 22px 46px rgba(23, 50, 43, 0.1);
 }
 
 .preview-header,
@@ -654,6 +632,16 @@ textarea {
   align-items: start;
 }
 
+.teacher-head-main,
+.teacher-head-side {
+  display: grid;
+  gap: 8px;
+}
+
+.teacher-head-side {
+  justify-items: end;
+}
+
 .teacher-head strong,
 .booking-preview strong {
   display: block;
@@ -673,6 +661,15 @@ textarea {
   gap: 10px;
 }
 
+.teacher-note-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(23, 50, 43, 0.08);
+}
+
 .tag {
   display: inline-flex;
   align-items: center;
@@ -681,6 +678,22 @@ textarea {
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.62);
+}
+
+.teacher-price-tag {
+  font-weight: 600;
+}
+
+.availability-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  color: #fffaf3;
+  background: linear-gradient(135deg, rgba(23, 50, 43, 0.92), rgba(47, 79, 68, 0.92));
+  font-size: 0.84rem;
 }
 
 .slot-group {
@@ -755,9 +768,114 @@ textarea {
   color: #f7f0e6;
 }
 
+.booking-form {
+  gap: 16px;
+}
+
+.form-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.form-section-head {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+}
+
+.form-section-head strong {
+  display: block;
+  color: var(--text);
+}
+
+.form-section-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.step-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  color: #fffaf3;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .insight-layout {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 24px;
+}
+
+.payment-options {
+  display: grid;
+  gap: 12px;
+}
+
+.payment-option {
+  display: flex;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.56);
+  cursor: pointer;
+}
+
+.payment-option.is-disabled {
+  border-style: dashed;
+}
+
+.payment-option input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.payment-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.payment-option strong {
+  color: var(--text);
+}
+
+.payment-option small {
+  color: var(--muted);
+}
+
+.deposit-summary {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(219, 111, 82, 0.18);
+  background: rgba(255, 246, 239, 0.76);
+  color: var(--muted);
+}
+
+.deposit-summary strong {
+  color: var(--text);
+}
+
+.booking-submit-bar {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 250, 244, 0.72);
+  border: 1px solid rgba(219, 111, 82, 0.14);
 }
 
 .schedule-entry,
@@ -843,7 +961,7 @@ textarea {
     justify-self: start;
   }
 
-  .phone-frame {
+  .preview-card {
     margin-left: 0;
   }
 }
@@ -885,6 +1003,10 @@ textarea {
   .slot-row,
   .hero-actions {
     gap: 8px;
+  }
+
+  .teacher-head-side {
+    justify-items: start;
   }
 
   .ghost-button,

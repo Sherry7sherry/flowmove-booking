@@ -48,3 +48,16 @@ npm start
 ## 后续建议
 
 如果准备正式运营，下一步建议升级为 SQLite 或 Postgres，并接入短信 / 微信提醒。
+
+## 支付网关预留
+
+当前版本已经预留微信支付和支付宝定金支付接入口，但默认不会真的发起扣款。
+
+后续接真实支付时，至少需要配置这些环境变量：
+
+- `WECHAT_PAY_MCHID`
+- `WECHAT_PAY_API_V3_KEY`
+- `ALIPAY_APP_ID`
+- `ALIPAY_PRIVATE_KEY`
+
+拿到商户资料后，可以继续把下单、签名和支付回调补上。

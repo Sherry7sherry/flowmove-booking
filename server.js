@@ -16,6 +16,16 @@ const STATIC_FILES = {
   "/styles.css": "styles.css",
   "/script.js": "script.js",
 };
+const PAYMENT_CONFIG = {
+  wechat: {
+    enabled: Boolean(process.env.WECHAT_PAY_MCHID && process.env.WECHAT_PAY_API_V3_KEY),
+    mode: "h5",
+  },
+  alipay: {
+    enabled: Boolean(process.env.ALIPAY_APP_ID && process.env.ALIPAY_PRIVATE_KEY),
+    mode: "wap",
+  },
+};
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const sessions = new Map();
 let writeQueue = Promise.resolve();
@@ -336,8 +346,33 @@ function shapeBooking(booking, data) {
   const teacher = data.teachers.find((item) => item.id === booking.teacherId);
   return {
     ...booking,
+    paymentMethod: booking.paymentMethod || "wechat",
+    depositStatus: booking.depositStatus || "pending",
+    paymentGatewayStatus: booking.paymentGatewayStatus || "not_configured",
+    depositAmount: Number(booking.depositAmount || 0),
+    remainingAmount: Number(booking.remainingAmount || 0),
     teacherName: teacher ? teacher.name : booking.teacherId,
     teacherSpecialty: teacher ? teacher.specialty : "",
+    teacherPrice: teacher ? teacher.price : "",
+  };
+}
+
+function parsePriceAmount(priceLabel) {
+  return Number(String(priceLabel || "").replace(/[^\d.]/g, ""));
+}
+
+function getPaymentProviderMeta() {
+  return {
+    wechat: {
+      label: "微信支付",
+      enabled: PAYMENT_CONFIG.wechat.enabled,
+      mode: PAYMENT_CONFIG.wechat.mode,
+    },
+    alipay: {
+      label: "支付宝",
+      enabled: PAYMENT_CONFIG.alipay.enabled,
+      mode: PAYMENT_CONFIG.alipay.mode,
+    },
   };
 }
 
@@ -368,6 +403,7 @@ async function handleApi(req, res) {
         teacher: "tina / FlowMove2026!",
         admin: "admin / FlowMoveAdmin2026!",
       },
+      paymentProviders: getPaymentProviderMeta(),
     });
   }
 
@@ -491,9 +527,14 @@ async function handleApi(req, res) {
     const bodyNotes = String(body.bodyNotes || "").trim();
     const goalNotes = String(body.goalNotes || "").trim();
     const address = String(body.address || "").trim();
+    const paymentMethod = String(body.paymentMethod || "").trim();
 
-    if (!teacherId || !date || !time || !bodyNotes || !goalNotes || !address) {
+    if (!teacherId || !date || !time || !bodyNotes || !goalNotes || !address || !paymentMethod) {
       return sendJson(res, 400, { error: "请完整填写预约信息。" });
+    }
+
+    if (!["wechat", "alipay"].includes(paymentMethod)) {
+      return sendJson(res, 400, { error: "请选择微信支付或支付宝作为定金支付方式。" });
     }
 
     if (!validateAddress(address)) {
@@ -501,6 +542,12 @@ async function handleApi(req, res) {
     }
 
     const data = await readData();
+    const teacher = data.teachers.find((item) => item.id === teacherId);
+
+    if (!teacher) {
+      return sendJson(res, 404, { error: "老师不存在。" });
+    }
+
     const availableSlots = data.availability[teacherId]?.[date] || [];
     const alreadyBooked = data.bookings.some(
       (booking) => booking.teacherId === teacherId && booking.date === date && booking.time === time,
@@ -509,6 +556,10 @@ async function handleApi(req, res) {
     if (!availableSlots.includes(time) || alreadyBooked) {
       return sendJson(res, 409, { error: "该时段已不可预约，请刷新后重试。" });
     }
+
+    const totalAmount = parsePriceAmount(teacher.price);
+    const depositAmount = Math.round(totalAmount * 0.2);
+    const remainingAmount = totalAmount - depositAmount;
 
     const booking = {
       id: crypto.randomUUID(),
@@ -521,12 +572,87 @@ async function handleApi(req, res) {
       bodyNotes,
       goalNotes,
       address,
+      paymentMethod,
+      totalAmount,
+      depositRate: 0.2,
+      depositAmount,
+      remainingAmount,
+      depositStatus: "pending",
+      paymentGatewayStatus: "not_configured",
+      paymentIntent: null,
       createdAt: new Date().toISOString(),
     };
 
     data.bookings.unshift(booking);
     await writeData(data);
     return sendJson(res, 201, { booking: shapeBooking(booking, data) });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/payments/create") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    if (session.user.role !== "student") {
+      return sendJson(res, 403, { error: "只有学生可以创建支付订单。" });
+    }
+
+    const body = await readBody(req);
+    const bookingId = String(body.bookingId || "");
+
+    if (!bookingId) {
+      return sendJson(res, 400, { error: "缺少预约编号。" });
+    }
+
+    const data = await readData();
+    const booking = data.bookings.find(
+      (item) => item.id === bookingId && item.studentId === session.user.id,
+    );
+
+    if (!booking) {
+      return sendJson(res, 404, { error: "未找到该预约。" });
+    }
+
+    const provider = PAYMENT_CONFIG[booking.paymentMethod];
+
+    if (!provider) {
+      return sendJson(res, 400, { error: "支付方式不存在。" });
+    }
+
+    booking.paymentIntent = {
+      provider: booking.paymentMethod,
+      status: provider.enabled ? "ready_for_gateway" : "gateway_not_configured",
+      createdAt: new Date().toISOString(),
+      amount: booking.depositAmount,
+      mode: provider.mode,
+      gatewayOrderId: provider.enabled ? `gw_${crypto.randomUUID()}` : null,
+      nextAction: provider.enabled ? "redirect_to_gateway" : "wait_for_credentials",
+    };
+    booking.paymentGatewayStatus = booking.paymentIntent.status;
+    await writeData(data);
+
+    if (!provider.enabled) {
+      return sendJson(res, 200, {
+        payment: {
+          bookingId: booking.id,
+          provider: booking.paymentMethod,
+          status: "gateway_not_configured",
+          message: "支付网关资料尚未配置，当前已预留真实支付接入位。",
+          amount: booking.depositAmount,
+        },
+      });
+    }
+
+    return sendJson(res, 200, {
+      payment: {
+        bookingId: booking.id,
+        provider: booking.paymentMethod,
+        status: "ready_for_gateway",
+        amount: booking.depositAmount,
+        redirectUrl: `/pay/${booking.paymentMethod}/${booking.id}`,
+      },
+    });
   }
 
   if (req.method === "GET" && url.pathname === "/api/bookings") {

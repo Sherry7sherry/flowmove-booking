@@ -33,6 +33,8 @@ const bookingForm = document.querySelector("#booking-form");
 const bodyNotesInput = document.querySelector("#body-notes");
 const goalNotesInput = document.querySelector("#goal-notes");
 const addressInput = document.querySelector("#address");
+const paymentOptions = document.querySelector("#payment-options");
+const depositSummary = document.querySelector("#deposit-summary");
 const bookingStatus = document.querySelector("#booking-status");
 const bookingList = document.querySelector("#booking-list");
 const teacherManagerSelect = document.querySelector("#teacher-manager-select");
@@ -103,6 +105,47 @@ function getTeacherById(teacherId) {
   return state.bootstrap.teachers.find((teacher) => teacher.id === teacherId);
 }
 
+function parsePrice(priceLabel) {
+  return Number(String(priceLabel).replace(/[^\d.]/g, ""));
+}
+
+function formatCurrency(amount) {
+  return `¥${Math.round(amount)}`;
+}
+
+function getSelectedPaymentMethod() {
+  const selected = bookingForm.querySelector('input[name="payment-method"]:checked');
+  return selected ? selected.value : "";
+}
+
+function formatPaymentMethod(method) {
+  return method === "wechat" ? "微信支付" : "支付宝";
+}
+
+function formatDepositStatus(status) {
+  if (status === "paid") {
+    return "已支付";
+  }
+
+  if (status === "pending") {
+    return "待支付";
+  }
+
+  return "待确认";
+}
+
+function formatGatewayStatus(status) {
+  if (status === "ready_for_gateway") {
+    return "已生成支付单";
+  }
+
+  if (status === "gateway_not_configured" || status === "not_configured") {
+    return "待接入支付网关";
+  }
+
+  return "待处理";
+}
+
 function updateSessionUI() {
   const user = state.sessionUser;
 
@@ -110,7 +153,7 @@ function updateSessionUI() {
     sessionStatus.textContent = "未登录，可先浏览老师信息。";
     logoutButton.classList.add("hidden");
     teacherManagerSelect.disabled = false;
-    bookingStatus.textContent = "学生登录后即可提交预约。";
+    bookingStatus.textContent = "学生登录后即可提交预约并完成 20% 定金支付。";
     teacherStatus.textContent = "老师或管理员登录后可操作。";
     recordCaption.textContent = "登录后加载对应身份的预约记录。";
     return;
@@ -120,7 +163,7 @@ function updateSessionUI() {
 
   if (user.role === "student") {
     sessionStatus.textContent = `${user.name} 已以学生身份登录，可以提交预约。`;
-    bookingStatus.textContent = "请选择时段并填写信息后提交预约。";
+    bookingStatus.textContent = "请选择时段、填写信息并完成 20% 定金支付。";
     teacherStatus.textContent = "当前不是老师端账号，排班区域仅可查看。";
     teacherManagerSelect.disabled = false;
     recordCaption.textContent = "当前展示你的个人预约记录。";
@@ -149,16 +192,25 @@ function updateSessionUI() {
 function updateSelectedSlotView() {
   if (!state.selectedSlot) {
     selectedSlotView.textContent = "请先在右侧老师卡片中选择一个空余时间。";
+    depositSummary.textContent = "请选择时段后查看本次课程定金金额。";
     return;
   }
 
   const teacher = getTeacherById(state.selectedSlot.teacherId);
+  const total = parsePrice(teacher.price);
+  const deposit = total * 0.2;
+  const balance = total - deposit;
   selectedSlotView.innerHTML = `
     <div class="booking-preview">
       <strong>${teacher.name} · ${teacher.specialty}</strong>
       <p class="booking-meta">${formatLongDate(state.selectedSlot.date)} · ${state.selectedSlot.time}</p>
       <p class="booking-meta">${teacher.price} · 服务区域 ${teacher.serviceAreas}</p>
+      <p class="booking-meta">定金 ${formatCurrency(deposit)}，剩余尾款 ${formatCurrency(balance)}</p>
     </div>
+  `;
+  depositSummary.innerHTML = `
+    <strong>本次课程总价 ${formatCurrency(total)}</strong>
+    <span>需先支付 20% 定金 ${formatCurrency(deposit)}，剩余 ${formatCurrency(balance)} 可在线下补齐。</span>
   `;
 }
 
@@ -208,6 +260,21 @@ async function loadBootstrap() {
     payload.slotOptions.map((slot) => ({ value: slot, label: slot })),
     null,
   );
+
+  paymentOptions.querySelectorAll('input[name="payment-method"]').forEach((input) => {
+    const provider = payload.paymentProviders?.[input.value];
+    const container = input.closest(".payment-option");
+
+    if (!provider) {
+      return;
+    }
+
+    container.classList.toggle("is-disabled", !provider.enabled);
+    const hint = container.querySelector("small");
+    hint.textContent = provider.enabled
+      ? `将拉起${provider.label}完成 20% 定金支付`
+      : `${provider.label}网关待接入，当前先保留支付流程`;
+  });
 }
 
 async function loadSession() {
@@ -246,6 +313,7 @@ async function renderTeacherCards() {
     const card = document.createElement("article");
     card.className = "teacher-card";
     card.style.animationDelay = `${index * 70}ms`;
+    const availableSlots = teacher.slots.filter((slot) => !slot.booked).length;
     const slotMarkup = teacher.slots.length
       ? teacher.slots
           .map((slot) => {
@@ -272,13 +340,19 @@ async function renderTeacherCards() {
 
     card.innerHTML = `
       <div class="teacher-head">
-        <div>
+        <div class="teacher-head-main">
           <strong>${teacher.name}</strong>
           <p class="teacher-meta">${teacher.specialty}</p>
         </div>
-        <span class="tag">${teacher.price}</span>
+        <div class="teacher-head-side">
+          <span class="tag teacher-price-tag">${teacher.price}</span>
+          <span class="availability-pill">${availableSlots} 个时段</span>
+        </div>
       </div>
-      <p class="teacher-meta">${teacher.experience} · ${teacher.focus}</p>
+      <div class="teacher-note-card">
+        <p class="teacher-meta">${teacher.experience}</p>
+        <p class="teacher-meta">${teacher.focus}</p>
+      </div>
       <div class="teacher-stats">
         <span class="tag">${formatLongDate(dateFilter.value)}</span>
         <span class="tag">服务区域 ${teacher.serviceAreas}</span>
@@ -389,21 +463,24 @@ async function renderBookings() {
   payload.bookings.forEach((booking) => {
     const card = document.createElement("article");
     card.className = "record-card";
-    card.innerHTML = `
-      <div class="record-head">
-        <div>
-          <h4>${booking.studentName} 已预约 ${booking.teacherName}</h4>
-          <p class="booking-meta">${formatLongDate(booking.date)} · ${booking.time}</p>
+      card.innerHTML = `
+        <div class="record-head">
+          <div>
+            <h4>${booking.studentName} 已预约 ${booking.teacherName}</h4>
+            <p class="booking-meta">${formatLongDate(booking.date)} · ${booking.time}</p>
         </div>
         <span class="tag">${booking.teacherSpecialty}</span>
       </div>
-      <div class="record-details">
-        <p><strong>身体情况：</strong>${booking.bodyNotes}</p>
-        <p><strong>改善目标：</strong>${booking.goalNotes}</p>
-        <p><strong>上门地址：</strong>${booking.address}</p>
-        <p><strong>联系方式：</strong>${booking.studentPhone}</p>
-      </div>
-    `;
+        <div class="record-details">
+          <p><strong>身体情况：</strong>${booking.bodyNotes}</p>
+          <p><strong>改善目标：</strong>${booking.goalNotes}</p>
+          <p><strong>上门地址：</strong>${booking.address}</p>
+          <p><strong>联系方式：</strong>${booking.studentPhone}</p>
+          <p><strong>支付方式：</strong>${formatPaymentMethod(booking.paymentMethod)}</p>
+          <p><strong>定金状态：</strong>${formatDepositStatus(booking.depositStatus)} ${formatCurrency(booking.depositAmount)}，尾款 ${formatCurrency(booking.remainingAmount)}</p>
+          <p><strong>网关状态：</strong>${formatGatewayStatus(booking.paymentGatewayStatus)}</p>
+        </div>
+      `;
     bookingList.append(card);
   });
 }
@@ -475,8 +552,14 @@ async function handleBookingSubmit(event) {
     return;
   }
 
+  const paymentMethod = getSelectedPaymentMethod();
+  if (!paymentMethod) {
+    bookingStatus.textContent = "请选择微信支付或支付宝作为定金支付方式。";
+    return;
+  }
+
   try {
-    await api("/api/bookings", {
+    const bookingPayload = await api("/api/bookings", {
       method: "POST",
       body: JSON.stringify({
         teacherId: state.selectedSlot.teacherId,
@@ -485,6 +568,13 @@ async function handleBookingSubmit(event) {
         bodyNotes: bodyNotesInput.value.trim(),
         goalNotes: goalNotesInput.value.trim(),
         address: addressInput.value.trim(),
+        paymentMethod,
+      }),
+    });
+    const paymentPayload = await api("/api/payments/create", {
+      method: "POST",
+      body: JSON.stringify({
+        bookingId: bookingPayload.booking.id,
       }),
     });
     bookingForm.reset();
@@ -492,7 +582,11 @@ async function handleBookingSubmit(event) {
     studentPhoneInput.value = state.sessionUser.phone;
     state.selectedSlot = null;
     updateSelectedSlotView();
-    bookingStatus.textContent = "预约提交成功，时段已锁定。";
+    if (paymentPayload.payment.status === "gateway_not_configured") {
+      bookingStatus.textContent = `预约已创建，需支付 ${formatCurrency(paymentPayload.payment.amount)} 定金；当前${formatPaymentMethod(paymentMethod)}网关待接入。`;
+    } else {
+      bookingStatus.textContent = `预约已创建，正在跳转${formatPaymentMethod(paymentMethod)}支付 ${formatCurrency(paymentPayload.payment.amount)} 定金。`;
+    }
     await refreshDataViews();
   } catch (error) {
     bookingStatus.textContent = error.message;
