@@ -26,6 +26,8 @@ const PAYMENT_CONFIG = {
     mode: "wap",
   },
 };
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "sherry7sherry";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1qaz2wsx";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 const sessions = new Map();
 let writeQueue = Promise.resolve();
@@ -69,31 +71,37 @@ function createSeedData() {
         id: "tina",
         role: "teacher",
         name: "Tina",
+        phone: "13800010001",
         specialty: "普拉提塑形",
         focus: "核心激活 / 体态调整 / 产后恢复",
         experience: "6 年教学经验",
         price: "¥420 / 次",
         serviceAreas: "静安区、徐汇区、长宁区",
+        certifications: "Balanced Body 普拉提认证，孕产运动专项培训",
       }),
       createAccount("mia", "FlowMove2026!", {
         id: "mia",
         role: "teacher",
         name: "Mia",
+        phone: "13800010002",
         specialty: "瑜伽伸展",
         focus: "肩颈舒缓 / 柔韧改善 / 睡眠放松",
         experience: "5 年教学经验",
         price: "¥380 / 次",
         serviceAreas: "浦东新区、杨浦区、虹口区",
+        certifications: "RYT 500 小时认证，功能性拉伸培训",
       }),
       createAccount("zoe", "FlowMove2026!", {
         id: "zoe",
         role: "teacher",
         name: "Zoe",
+        phone: "13800010003",
         specialty: "功能训练融合",
         focus: "腰背稳定 / 私教入门 / 久坐改善",
         experience: "7 年教学经验",
         price: "¥460 / 次",
         serviceAreas: "黄浦区、普陀区、闵行区",
+        certifications: "NASM CPT，运动康复进阶培训",
       }),
     ],
     admins: [
@@ -101,6 +109,8 @@ function createSeedData() {
         id: "admin",
         role: "admin",
         name: "运营管理员",
+        phone: "13800019999",
+        username: ADMIN_USERNAME,
       }),
     ],
     students: [],
@@ -122,6 +132,7 @@ function createSeedData() {
       },
     },
     bookings: [],
+    notifications: [],
   };
 }
 
@@ -134,6 +145,8 @@ function sanitizeTeacher(teacher) {
     experience: teacher.experience,
     price: teacher.price,
     serviceAreas: teacher.serviceAreas,
+    certifications: teacher.certifications || "",
+    phone: teacher.phone,
   };
 }
 
@@ -146,13 +159,17 @@ function normalizeData(data) {
   const days = getDayOptions();
   const availability = {};
 
-  defaults.teachers.forEach((teacher) => {
+  const allTeachers = data.teachers.length ? data.teachers : defaults.teachers;
+
+  allTeachers.forEach((teacher) => {
+    const defaultTeacher = defaults.teachers.find((item) => item.id === teacher.id);
     const existingTeacherAvailability = data.availability?.[teacher.id] || {};
     availability[teacher.id] = {};
 
     days.forEach((day) => {
       availability[teacher.id][day] =
-        existingTeacherAvailability[day] || defaults.availability[teacher.id][day] || [];
+        existingTeacherAvailability[day] ||
+        (defaultTeacher ? defaults.availability[defaultTeacher.id]?.[day] || [] : []);
     });
   });
 
@@ -162,6 +179,7 @@ function normalizeData(data) {
     students: Array.isArray(data.students) ? data.students : [],
     availability,
     bookings: Array.isArray(data.bookings) ? data.bookings : [],
+    notifications: Array.isArray(data.notifications) ? data.notifications : [],
   };
 }
 
@@ -376,6 +394,38 @@ function getPaymentProviderMeta() {
   };
 }
 
+function getRoleCollection(data, role) {
+  if (role === "teacher") {
+    return data.teachers;
+  }
+
+  if (role === "admin") {
+    return data.admins;
+  }
+
+  return data.students;
+}
+
+function shapeUserForSession(user) {
+  return {
+    id: user.id,
+    role: user.role,
+    name: user.name,
+    phone: user.phone,
+  };
+}
+
+function createNotification(recipientRole, recipientId, title, message) {
+  return {
+    id: crypto.randomUUID(),
+    recipientRole,
+    recipientId,
+    title,
+    message,
+    createdAt: new Date().toISOString(),
+  };
+}
+
 async function handleApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -413,6 +463,79 @@ async function handleApi(req, res) {
       return sendJson(res, 200, { user: null });
     }
     return sendJson(res, 200, { user: session.user });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/auth/admin-password") {
+    const body = await readBody(req);
+    const username = String(body.username || "").trim();
+    const password = String(body.password || "");
+
+    if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+      return sendJson(res, 401, { error: "管理员用户名或密码不正确。" });
+    }
+
+    const data = await readData();
+    let admin = data.admins.find((item) => item.id === "admin");
+
+    if (!admin) {
+      admin = {
+        id: "admin",
+        role: "admin",
+        name: "系统管理员",
+        phone: "13800019999",
+        username: ADMIN_USERNAME,
+      };
+      data.admins.unshift(admin);
+      await writeData(data);
+    }
+
+    admin.username = ADMIN_USERNAME;
+    const sessionUser = shapeUserForSession(admin);
+    const token = createSession(sessionUser);
+    setSessionCookie(res, token);
+    return sendJson(res, 200, { user: sessionUser });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/auth/phone") {
+    const body = await readBody(req);
+    const role = String(body.role || "").trim();
+    const name = String(body.name || "").trim();
+    const phone = String(body.phone || "").trim();
+
+    if (!["student", "teacher", "admin"].includes(role) || !name || !phone) {
+      return sendJson(res, 400, { error: "请选择身份并填写姓名和手机号。" });
+    }
+
+    const data = await readData();
+    const collection = getRoleCollection(data, role);
+    let user = collection.find((item) => item.phone === phone);
+
+    if (!user) {
+      user = {
+        id: crypto.randomUUID(),
+        role,
+        name,
+        phone,
+        specialty: role === "teacher" ? "" : undefined,
+        focus: role === "teacher" ? "" : undefined,
+        experience: role === "teacher" ? "" : undefined,
+        price: role === "teacher" ? "¥0 / 次" : undefined,
+        serviceAreas: role === "teacher" ? "" : role === "student" ? "" : undefined,
+        certifications: role === "teacher" ? "" : undefined,
+        goals: role === "student" ? "" : undefined,
+        bodyCondition: role === "student" ? "" : undefined,
+        area: role === "student" ? "" : undefined,
+      };
+      collection.push(user);
+    } else {
+      user.name = name;
+    }
+
+    await writeData(data);
+    const sessionUser = shapeUserForSession(user);
+    const token = createSession(sessionUser);
+    setSessionCookie(res, token);
+    return sendJson(res, 200, { user: sessionUser });
   }
 
   if (req.method === "POST" && url.pathname === "/api/auth/student") {
@@ -510,6 +633,58 @@ async function handleApi(req, res) {
     return sendJson(res, 200, { teachers });
   }
 
+  if (req.method === "GET" && url.pathname === "/api/profile/me") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    const data = await readData();
+    const collection = getRoleCollection(data, session.user.role);
+    const user = collection.find((item) => item.id === session.user.id);
+
+    if (!user) {
+      return sendJson(res, 404, { error: "未找到当前用户资料。" });
+    }
+
+    return sendJson(res, 200, { profile: user });
+  }
+
+  if (req.method === "PUT" && url.pathname === "/api/profile/me") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    const body = await readBody(req);
+    const data = await readData();
+    const collection = getRoleCollection(data, session.user.role);
+    const user = collection.find((item) => item.id === session.user.id);
+
+    if (!user) {
+      return sendJson(res, 404, { error: "未找到当前用户资料。" });
+    }
+
+    user.name = String(body.name || user.name).trim();
+
+    if (session.user.role === "teacher") {
+      user.certifications = String(body.certifications || "").trim();
+      user.focus = String(body.focus || "").trim();
+      user.specialty = String(body.specialty || "").trim();
+      user.price = String(body.price || "").trim() || user.price;
+      user.serviceAreas = String(body.serviceAreas || "").trim();
+    }
+
+    if (session.user.role === "student") {
+      user.goals = String(body.goals || "").trim();
+      user.bodyCondition = String(body.bodyCondition || "").trim();
+      user.area = String(body.area || "").trim();
+    }
+
+    await writeData(data);
+    return sendJson(res, 200, { profile: user });
+  }
+
   if (req.method === "POST" && url.pathname === "/api/bookings") {
     const session = requireUser(req, res);
     if (!session) {
@@ -577,82 +752,33 @@ async function handleApi(req, res) {
       depositRate: 0.2,
       depositAmount,
       remainingAmount,
-      depositStatus: "pending",
-      paymentGatewayStatus: "not_configured",
-      paymentIntent: null,
+      depositStatus: "paid",
+      paymentGatewayStatus: "captured",
+      nonRefundableDeposit: true,
       createdAt: new Date().toISOString(),
     };
 
     data.bookings.unshift(booking);
+    data.notifications.unshift(
+      createNotification(
+        "teacher",
+        teacherId,
+        "新预约已支付定金",
+        `${session.user.name} 已预约 ${date} ${time}，并完成 20% 预约金支付。`,
+      ),
+    );
+    data.admins.forEach((admin) => {
+      data.notifications.unshift(
+        createNotification(
+          "admin",
+          admin.id,
+          "有新预约完成支付",
+          `${session.user.name} 与 ${teacher.name} 的课程预约已支付定金。`,
+        ),
+      );
+    });
     await writeData(data);
     return sendJson(res, 201, { booking: shapeBooking(booking, data) });
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/payments/create") {
-    const session = requireUser(req, res);
-    if (!session) {
-      return;
-    }
-
-    if (session.user.role !== "student") {
-      return sendJson(res, 403, { error: "只有学生可以创建支付订单。" });
-    }
-
-    const body = await readBody(req);
-    const bookingId = String(body.bookingId || "");
-
-    if (!bookingId) {
-      return sendJson(res, 400, { error: "缺少预约编号。" });
-    }
-
-    const data = await readData();
-    const booking = data.bookings.find(
-      (item) => item.id === bookingId && item.studentId === session.user.id,
-    );
-
-    if (!booking) {
-      return sendJson(res, 404, { error: "未找到该预约。" });
-    }
-
-    const provider = PAYMENT_CONFIG[booking.paymentMethod];
-
-    if (!provider) {
-      return sendJson(res, 400, { error: "支付方式不存在。" });
-    }
-
-    booking.paymentIntent = {
-      provider: booking.paymentMethod,
-      status: provider.enabled ? "ready_for_gateway" : "gateway_not_configured",
-      createdAt: new Date().toISOString(),
-      amount: booking.depositAmount,
-      mode: provider.mode,
-      gatewayOrderId: provider.enabled ? `gw_${crypto.randomUUID()}` : null,
-      nextAction: provider.enabled ? "redirect_to_gateway" : "wait_for_credentials",
-    };
-    booking.paymentGatewayStatus = booking.paymentIntent.status;
-    await writeData(data);
-
-    if (!provider.enabled) {
-      return sendJson(res, 200, {
-        payment: {
-          bookingId: booking.id,
-          provider: booking.paymentMethod,
-          status: "gateway_not_configured",
-          message: "支付网关资料尚未配置，当前已预留真实支付接入位。",
-          amount: booking.depositAmount,
-        },
-      });
-    }
-
-    return sendJson(res, 200, {
-      payment: {
-        bookingId: booking.id,
-        provider: booking.paymentMethod,
-        status: "ready_for_gateway",
-        amount: booking.depositAmount,
-        redirectUrl: `/pay/${booking.paymentMethod}/${booking.id}`,
-      },
-    });
   }
 
   if (req.method === "GET" && url.pathname === "/api/bookings") {
@@ -674,6 +800,40 @@ async function handleApi(req, res) {
 
     return sendJson(res, 200, {
       bookings: bookings.map((booking) => shapeBooking(booking, data)),
+    });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/notifications") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    const data = await readData();
+    const notifications = data.notifications.filter(
+      (item) =>
+        (item.recipientRole === session.user.role && item.recipientId === session.user.id) ||
+        (session.user.role === "admin" && item.recipientRole === "admin"),
+    );
+
+    return sendJson(res, 200, { notifications });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/admin/overview") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    if (session.user.role !== "admin") {
+      return sendJson(res, 403, { error: "只有管理员可以查看总览。" });
+    }
+
+    const data = await readData();
+    return sendJson(res, 200, {
+      teachers: data.teachers.map((teacher) => sanitizeTeacher(teacher)),
+      students: data.students,
+      bookings: data.bookings.map((booking) => shapeBooking(booking, data)),
     });
   }
 

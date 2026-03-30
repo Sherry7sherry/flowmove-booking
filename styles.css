@@ -187,12 +187,12 @@ body::before {
 
 .hero-grid {
   grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
-  margin-top: 38px;
-  align-items: end;
+  margin-top: 24px;
+  align-items: center;
 }
 
 .hero-copy h2 {
-  max-width: 8ch;
+  max-width: 7ch;
   font-family: "Noto Serif SC", serif;
   font-size: clamp(2.7rem, 7vw, 5.1rem);
   line-height: 1.02;
@@ -217,7 +217,14 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: 20px;
+}
+
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .hero-preview {
@@ -250,8 +257,8 @@ textarea {
 .preview-card {
   display: grid;
   gap: 14px;
-  min-height: 430px;
-  width: min(100%, 360px);
+  min-height: 360px;
+  width: 100%;
   margin-left: auto;
   padding: 20px 18px 18px;
   border-radius: 26px;
@@ -340,18 +347,18 @@ textarea {
   color: #f7f0e6;
 }
 
-.preview-summary button {
-  border: none;
-  padding: 13px 16px;
-  border-radius: 999px;
-  color: #fffaf3;
-  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
-  font: inherit;
-  cursor: pointer;
+.preview-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hero-mini-stats {
   align-items: stretch;
+}
+
+.hero-preview > * {
+  width: 100%;
 }
 
 .hero-mini-stats div {
@@ -437,6 +444,69 @@ textarea {
 
 .secondary-heading {
   margin-top: 48px;
+}
+
+.compact-heading {
+  margin-bottom: 18px;
+}
+
+.auth-portal,
+.workspace {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.auth-card,
+.auth-side-card {
+  padding: 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background:
+    radial-gradient(circle at top right, rgba(219, 111, 82, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(255, 252, 246, 0.88) 0%, rgba(244, 234, 219, 0.72) 100%);
+}
+
+.auth-card {
+  display: grid;
+  gap: 16px;
+}
+
+.mini-flow {
+  display: grid;
+  gap: 12px;
+}
+
+.mini-flow article {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.mini-flow p,
+.mini-flow strong {
+  margin: 0;
+}
+
+.mini-flow p {
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.workspace-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+  gap: 24px;
+  align-items: end;
 }
 
 .dashboard-grid {
@@ -878,6 +948,20 @@ textarea {
   border: 1px solid rgba(219, 111, 82, 0.14);
 }
 
+.notification-list,
+.profile-list {
+  display: grid;
+  gap: 14px;
+}
+
+.single-column {
+  grid-template-columns: 1fr;
+}
+
+.admin-stats {
+  margin-top: 0;
+}
+
 .schedule-entry,
 .record-card {
   display: grid;
@@ -947,6 +1031,8 @@ textarea {
 @media (max-width: 960px) {
   .hero-grid,
   .section-heading,
+  .auth-layout,
+  .workspace-head,
   .dashboard-grid,
   .insight-layout,
   .booking-list {
