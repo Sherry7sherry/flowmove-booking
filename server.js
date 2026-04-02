@@ -1,4 +1,5 @@
 const http = require("http");
+const https = require("https");
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
@@ -18,13 +19,30 @@ const STATIC_FILES = {
 };
 const PAYMENT_CONFIG = {
   wechat: {
-    enabled: Boolean(process.env.WECHAT_PAY_MCHID && process.env.WECHAT_PAY_API_V3_KEY),
-    mode: "h5",
+    appid: process.env.WECHAT_PAY_APPID || "",
+    mchid: process.env.WECHAT_PAY_MCHID || "",
+    serial: process.env.WECHAT_PAY_SERIAL || "",
+    privateKey: process.env.WECHAT_PAY_PRIVATE_KEY || "",
+    privateKeyPath: process.env.WECHAT_PAY_PRIVATE_KEY_PATH || "",
+    notifyUrl: process.env.WECHAT_PAY_NOTIFY_URL || "",
+    enabled: Boolean(
+      process.env.WECHAT_PAY_APPID &&
+        process.env.WECHAT_PAY_MCHID &&
+        process.env.WECHAT_PAY_SERIAL &&
+        (process.env.WECHAT_PAY_PRIVATE_KEY || process.env.WECHAT_PAY_PRIVATE_KEY_PATH),
+    ),
   },
   alipay: {
     enabled: Boolean(process.env.ALIPAY_APP_ID && process.env.ALIPAY_PRIVATE_KEY),
     mode: "wap",
   },
+};
+const SUPPORT_CONTACT = {
+  name: process.env.SUPPORT_CONTACT_NAME || "ShiningShining",
+  wechatId: process.env.SUPPORT_CONTACT_WECHAT || "peach_starlover",
+  note:
+    process.env.SUPPORT_CONTACT_NOTE ||
+    "添加后请备注预约姓名、老师姓名和上课时间，客服核对到账后会人工确认预约。",
 };
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "sherry7sherry";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1qaz2wsx";
@@ -224,6 +242,21 @@ function sendText(res, statusCode, message) {
 }
 
 async function serveStatic(req, res) {
+  if (req.url.startsWith("/assets/")) {
+    const filePath = path.join(ROOT, req.url);
+    const extension = path.extname(filePath).toLowerCase();
+    const contentType =
+      extension === ".png"
+        ? "image/png"
+        : extension === ".webp"
+          ? "image/webp"
+          : "image/jpeg";
+    const content = await fs.readFile(filePath);
+    res.writeHead(200, { "Content-Type": contentType });
+    res.end(content);
+    return true;
+  }
+
   const fileName = STATIC_FILES[req.url];
   if (!fileName) {
     return false;
@@ -369,6 +402,8 @@ function shapeBooking(booking, data) {
     paymentGatewayStatus: booking.paymentGatewayStatus || "not_configured",
     depositAmount: Number(booking.depositAmount || 0),
     remainingAmount: Number(booking.remainingAmount || 0),
+    manualPaymentSubmittedAt: booking.manualPaymentSubmittedAt || null,
+    manualPaymentConfirmedAt: booking.manualPaymentConfirmedAt || null,
     teacherName: teacher ? teacher.name : booking.teacherId,
     teacherSpecialty: teacher ? teacher.specialty : "",
     teacherPrice: teacher ? teacher.price : "",
@@ -384,7 +419,7 @@ function getPaymentProviderMeta() {
     wechat: {
       label: "微信支付",
       enabled: PAYMENT_CONFIG.wechat.enabled,
-      mode: PAYMENT_CONFIG.wechat.mode,
+      mode: "desktop_qr + mobile_h5",
     },
     alipay: {
       label: "支付宝",
@@ -392,6 +427,201 @@ function getPaymentProviderMeta() {
       mode: PAYMENT_CONFIG.alipay.mode,
     },
   };
+}
+
+async function getWechatPrivateKey() {
+  if (PAYMENT_CONFIG.wechat.privateKey) {
+    return PAYMENT_CONFIG.wechat.privateKey;
+  }
+
+  if (PAYMENT_CONFIG.wechat.privateKeyPath) {
+    return fs.readFile(PAYMENT_CONFIG.wechat.privateKeyPath, "utf8");
+  }
+
+  throw new Error("WECHAT_PAY_PRIVATE_KEY 未配置。");
+}
+
+async function wechatRequest(method, requestPath, body) {
+  const nonce = crypto.randomBytes(16).toString("hex");
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const payload = body ? JSON.stringify(body) : "";
+  const message = `${method}\n${requestPath}\n${timestamp}\n${nonce}\n${payload}\n`;
+  const privateKey = await getWechatPrivateKey();
+  const signer = crypto.createSign("RSA-SHA256");
+  signer.update(message);
+  signer.end();
+  const signature = signer.sign(privateKey, "base64");
+  const authorization =
+    `WECHATPAY2-SHA256-RSA2048 mchid="${PAYMENT_CONFIG.wechat.mchid}",` +
+    `nonce_str="${nonce}",timestamp="${timestamp}",serial_no="${PAYMENT_CONFIG.wechat.serial}",` +
+    `signature="${signature}"`;
+
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: "api.mch.weixin.qq.com",
+        path: requestPath,
+        method,
+        headers: {
+          Authorization: authorization,
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+      },
+      (res) => {
+        const chunks = [];
+        res.on("data", (chunk) => chunks.push(chunk));
+        res.on("end", () => {
+          const text = Buffer.concat(chunks).toString("utf8");
+          const parsed = text ? JSON.parse(text) : {};
+
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(parsed);
+            return;
+          }
+
+          reject(new Error(parsed.message || parsed.detail || `微信支付请求失败：${res.statusCode}`));
+        });
+      },
+    );
+
+    req.on("error", reject);
+    if (payload) {
+      req.write(payload);
+    }
+    req.end();
+  });
+}
+
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  if (forwarded) {
+    return String(forwarded).split(",")[0].trim();
+  }
+
+  const remote = req.socket.remoteAddress || "";
+  return remote.replace("::ffff:", "") || "127.0.0.1";
+}
+
+function getOrigin(req) {
+  const proto = req.headers["x-forwarded-proto"] || "http";
+  const host = req.headers.host;
+  return `${proto}://${host}`;
+}
+
+function buildWechatOutTradeNo(booking) {
+  return `fm${booking.id.replace(/-/g, "").slice(0, 26)}`;
+}
+
+async function createWechatPayment(booking, req, scene) {
+  if (!PAYMENT_CONFIG.wechat.enabled) {
+    return {
+      status: "credentials_required",
+      scene,
+      message: "微信支付商户参数尚未配置，暂时不能发起真实支付。",
+    };
+  }
+
+  const amount = {
+    total: Math.round(booking.depositAmount * 100),
+    currency: "CNY",
+  };
+  const outTradeNo = booking.paymentIntent?.outTradeNo || buildWechatOutTradeNo(booking);
+  const origin = getOrigin(req);
+  const description = `FlowMove 课程预约金 ${booking.date} ${booking.time}`;
+
+  if (scene === "desktop") {
+    const payload = await wechatRequest("POST", "/v3/pay/transactions/native", {
+      appid: PAYMENT_CONFIG.wechat.appid,
+      mchid: PAYMENT_CONFIG.wechat.mchid,
+      description,
+      out_trade_no: outTradeNo,
+      notify_url: PAYMENT_CONFIG.wechat.notifyUrl || `${origin}/api/payments/wechat/notify`,
+      amount,
+    });
+
+    return {
+      status: "pending",
+      scene: "desktop",
+      codeUrl: payload.code_url,
+      outTradeNo,
+    };
+  }
+
+  const payload = await wechatRequest("POST", "/v3/pay/transactions/h5", {
+    appid: PAYMENT_CONFIG.wechat.appid,
+    mchid: PAYMENT_CONFIG.wechat.mchid,
+    description,
+    out_trade_no: outTradeNo,
+    notify_url: PAYMENT_CONFIG.wechat.notifyUrl || `${origin}/api/payments/wechat/notify`,
+    amount,
+    scene_info: {
+      payer_client_ip: getClientIp(req),
+      h5_info: {
+        type: "Wap",
+      },
+    },
+  });
+
+  return {
+    status: "pending",
+    scene: "mobile",
+    h5Url: payload.h5_url,
+    outTradeNo,
+  };
+}
+
+async function queryWechatPayment(outTradeNo) {
+  if (!PAYMENT_CONFIG.wechat.enabled) {
+    return { tradeState: "NOT_CONFIGURED" };
+  }
+
+  const result = await wechatRequest(
+    "GET",
+    `/v3/pay/transactions/out-trade-no/${outTradeNo}?mchid=${PAYMENT_CONFIG.wechat.mchid}`,
+  );
+
+  return result;
+}
+
+function markBookingPaid(booking, data) {
+  if (booking.depositStatus === "paid") {
+    return;
+  }
+
+  booking.depositStatus = "paid";
+  booking.paymentGatewayStatus = "captured";
+  booking.paidAt = new Date().toISOString();
+  booking.manualPaymentConfirmedAt = booking.manualPaymentConfirmedAt || booking.paidAt;
+
+  const teacher = data.teachers.find((item) => item.id === booking.teacherId);
+  data.notifications.unshift(
+    createNotification(
+      "student",
+      booking.studentId,
+      "预约金已确认到账",
+      `${teacher ? teacher.name : "老师"} 的 ${booking.date} ${booking.time} 课程已确认预约成功。`,
+    ),
+  );
+  data.notifications.unshift(
+    createNotification(
+      "teacher",
+      booking.teacherId,
+      "预约金已确认到账",
+      `${booking.studentName} 的 ${booking.date} ${booking.time} 课程预约金已确认到账，课程已锁定。`,
+    ),
+  );
+  data.admins.forEach((admin) => {
+    data.notifications.unshift(
+      createNotification(
+        "admin",
+        admin.id,
+        "预约已确认成功",
+        `${booking.studentName} 与 ${teacher ? teacher.name : booking.teacherId} 的课程预约已确认成功。`,
+      ),
+    );
+  });
 }
 
 function getRoleCollection(data, role) {
@@ -454,6 +684,7 @@ async function handleApi(req, res) {
         admin: "admin / FlowMoveAdmin2026!",
       },
       paymentProviders: getPaymentProviderMeta(),
+      supportContact: SUPPORT_CONTACT,
     });
   }
 
@@ -708,8 +939,8 @@ async function handleApi(req, res) {
       return sendJson(res, 400, { error: "请完整填写预约信息。" });
     }
 
-    if (!["wechat", "alipay"].includes(paymentMethod)) {
-      return sendJson(res, 400, { error: "请选择微信支付或支付宝作为定金支付方式。" });
+    if (paymentMethod !== "wechat") {
+      return sendJson(res, 400, { error: "当前版本仅支持微信支付预约金。" });
     }
 
     if (!validateAddress(address)) {
@@ -752,19 +983,53 @@ async function handleApi(req, res) {
       depositRate: 0.2,
       depositAmount,
       remainingAmount,
-      depositStatus: "paid",
-      paymentGatewayStatus: "captured",
+      depositStatus: "pending",
+      paymentGatewayStatus: "awaiting_contact",
       nonRefundableDeposit: true,
+      paymentIntent: null,
       createdAt: new Date().toISOString(),
     };
 
     data.bookings.unshift(booking);
+    await writeData(data);
+    return sendJson(res, 201, { booking: shapeBooking(booking, data) });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/bookings/manual-payment-submitted") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    if (session.user.role !== "student") {
+      return sendJson(res, 403, { error: "只有学生可以提交支付确认。" });
+    }
+
+    const body = await readBody(req);
+    const bookingId = String(body.bookingId || "");
+    const data = await readData();
+    const booking = data.bookings.find(
+      (item) => item.id === bookingId && item.studentId === session.user.id,
+    );
+
+    if (!booking) {
+      return sendJson(res, 404, { error: "未找到该预约。" });
+    }
+
+    if (booking.depositStatus === "paid") {
+      return sendJson(res, 200, { booking: shapeBooking(booking, data) });
+    }
+
+    booking.paymentGatewayStatus = "manual_review";
+    booking.manualPaymentSubmittedAt = new Date().toISOString();
+
+    const teacher = data.teachers.find((item) => item.id === booking.teacherId);
     data.notifications.unshift(
       createNotification(
         "teacher",
-        teacherId,
-        "新预约已支付定金",
-        `${session.user.name} 已预约 ${date} ${time}，并完成 20% 预约金支付。`,
+        booking.teacherId,
+        "学生已提交付款确认",
+        `${booking.studentName} 表示已向客服支付 ${booking.depositAmount} 元预约金，请等待管理员核对。`,
       ),
     );
     data.admins.forEach((admin) => {
@@ -772,13 +1037,128 @@ async function handleApi(req, res) {
         createNotification(
           "admin",
           admin.id,
-          "有新预约完成支付",
-          `${session.user.name} 与 ${teacher.name} 的课程预约已支付定金。`,
+          "有预约待人工确认",
+          `${booking.studentName} 已提交 ${teacher ? teacher.name : booking.teacherId} 的预约金付款确认，请核对到账。`,
         ),
       );
     });
+
     await writeData(data);
-    return sendJson(res, 201, { booking: shapeBooking(booking, data) });
+    return sendJson(res, 200, { booking: shapeBooking(booking, data) });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/payments/wechat/prepare") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    const body = await readBody(req);
+    const bookingId = String(body.bookingId || "");
+    const scene = body.scene === "mobile" ? "mobile" : "desktop";
+
+    const data = await readData();
+    const booking = data.bookings.find(
+      (item) => item.id === bookingId && item.studentId === session.user.id,
+    );
+
+    if (!booking) {
+      return sendJson(res, 404, { error: "未找到该预约。" });
+    }
+
+    if (booking.paymentMethod !== "wechat") {
+      return sendJson(res, 400, { error: "当前只支持准备微信支付。" });
+    }
+
+    const payment = await createWechatPayment(booking, req, scene);
+    booking.paymentIntent = {
+      provider: "wechat",
+      scene,
+      outTradeNo: payment.outTradeNo || booking.paymentIntent?.outTradeNo || null,
+      codeUrl: payment.codeUrl || null,
+      h5Url: payment.h5Url || null,
+      status: payment.status,
+      createdAt: new Date().toISOString(),
+    };
+    booking.paymentGatewayStatus = payment.status;
+    await writeData(data);
+
+    return sendJson(res, 200, { payment, booking: shapeBooking(booking, data) });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/payments/wechat/status") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    const bookingId = String(url.searchParams.get("bookingId") || "");
+    const data = await readData();
+    const booking = data.bookings.find(
+      (item) => item.id === bookingId && item.studentId === session.user.id,
+    );
+
+    if (!booking) {
+      return sendJson(res, 404, { error: "未找到该预约。" });
+    }
+
+    if (!booking.paymentIntent?.outTradeNo) {
+      return sendJson(res, 200, {
+        payment: {
+          status: booking.paymentGatewayStatus,
+          depositStatus: booking.depositStatus,
+        },
+        booking: shapeBooking(booking, data),
+      });
+    }
+
+    const result = await queryWechatPayment(booking.paymentIntent.outTradeNo);
+
+    if (result.trade_state === "SUCCESS") {
+      markBookingPaid(booking, data);
+      await writeData(data);
+      return sendJson(res, 200, {
+        payment: {
+          status: "paid",
+          depositStatus: "paid",
+          transactionId: result.transaction_id || "",
+        },
+        booking: shapeBooking(booking, data),
+      });
+    }
+
+    if (result.trade_state === "NOTPAY") {
+      booking.paymentGatewayStatus = "pending";
+      await writeData(data);
+      return sendJson(res, 200, {
+        payment: {
+          status: "pending",
+          depositStatus: booking.depositStatus,
+        },
+        booking: shapeBooking(booking, data),
+      });
+    }
+
+    if (result.tradeState === "NOT_CONFIGURED") {
+      return sendJson(res, 200, {
+        payment: {
+          status: "credentials_required",
+          depositStatus: booking.depositStatus,
+        },
+        booking: shapeBooking(booking, data),
+      });
+    }
+
+    booking.paymentGatewayStatus = "failed";
+    await writeData(data);
+    return sendJson(res, 200, {
+      payment: {
+        status: "failed",
+        depositStatus: booking.depositStatus,
+        tradeState: result.trade_state || "UNKNOWN",
+      },
+      booking: shapeBooking(booking, data),
+    });
   }
 
   if (req.method === "GET" && url.pathname === "/api/bookings") {
@@ -835,6 +1215,30 @@ async function handleApi(req, res) {
       students: data.students,
       bookings: data.bookings.map((booking) => shapeBooking(booking, data)),
     });
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/admin/bookings/confirm-payment") {
+    const session = requireUser(req, res);
+    if (!session) {
+      return;
+    }
+
+    if (session.user.role !== "admin") {
+      return sendJson(res, 403, { error: "只有管理员可以确认预约金。" });
+    }
+
+    const body = await readBody(req);
+    const bookingId = String(body.bookingId || "");
+    const data = await readData();
+    const booking = data.bookings.find((item) => item.id === bookingId);
+
+    if (!booking) {
+      return sendJson(res, 404, { error: "未找到该预约。" });
+    }
+
+    markBookingPaid(booking, data);
+    await writeData(data);
+    return sendJson(res, 200, { booking: shapeBooking(booking, data) });
   }
 
   if (req.method === "GET" && url.pathname === "/api/staff/schedule") {

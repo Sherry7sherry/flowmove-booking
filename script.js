@@ -10,6 +10,7 @@ const state = {
   },
   selectedSlot: null,
   currentProfile: null,
+  pendingPaymentBookingId: null,
 };
 
 const roleTabs = document.querySelector("#role-tabs");
@@ -55,6 +56,16 @@ const addressInput = document.querySelector("#address");
 const paymentOptions = document.querySelector("#payment-options");
 const depositSummary = document.querySelector("#deposit-summary");
 const bookingStatus = document.querySelector("#booking-status");
+const paymentSheet = document.querySelector("#payment-sheet");
+const paymentSceneLabel = document.querySelector("#payment-scene-label");
+const paymentGatewayMessage = document.querySelector("#payment-gateway-message");
+const paymentQrWrap = document.querySelector("#payment-qr-wrap");
+const paymentQrImage = document.querySelector("#payment-qr-image");
+const paymentMobileWrap = document.querySelector("#payment-mobile-wrap");
+const paymentRefresh = document.querySelector("#payment-refresh");
+const supportContactName = document.querySelector("#support-contact-name");
+const supportContactId = document.querySelector("#support-contact-id");
+const copySupportWechat = document.querySelector("#copy-support-wechat");
 
 const studentBookingList = document.querySelector("#student-booking-list");
 const teacherBookingList = document.querySelector("#teacher-booking-list");
@@ -151,6 +162,42 @@ function formatPaymentMethod(method) {
   return method === "wechat" ? "微信支付" : "支付宝";
 }
 
+function formatDepositStatus(status) {
+  if (status === "paid") {
+    return "已支付";
+  }
+  if (status === "pending") {
+    return "待支付";
+  }
+  return "支付处理中";
+}
+
+function formatGatewayStatus(status) {
+  if (status === "captured" || status === "paid") {
+    return "已确认";
+  }
+  if (status === "awaiting_contact") {
+    return "待联系客服";
+  }
+  if (status === "manual_review") {
+    return "待人工确认";
+  }
+  if (status === "credentials_required") {
+    return "网关待接入";
+  }
+  if (status === "failed") {
+    return "支付失败";
+  }
+  return "处理中";
+}
+
+function resetPaymentSheet() {
+  state.pendingPaymentBookingId = null;
+  paymentSheet.classList.add("hidden");
+  paymentGatewayMessage.textContent = "请添加客服微信，完成 20% 预约金支付后再提交确认。";
+  paymentSceneLabel.textContent = "人工确认";
+}
+
 function setSelectedRole(role) {
   state.selectedRole = role;
   roleTabs.querySelectorAll(".tab-button").forEach((button) => {
@@ -174,6 +221,7 @@ function renderSelectedSlot() {
   if (!state.selectedSlot) {
     selectedSlotView.textContent = "请先在老师资料卡中选择一个可预约时间。";
     depositSummary.textContent = "请选择时段后查看本次课程预约金金额。";
+    resetPaymentSheet();
     return;
   }
 
@@ -204,6 +252,24 @@ function fillStudentProfile(profile) {
   goalNotesInput.value = profile.goals || "";
   bodyNotesInput.value = profile.bodyCondition || "";
   addressInput.value = profile.area || "";
+}
+
+async function submitManualPaymentConfirmation() {
+  if (!state.pendingPaymentBookingId) {
+    bookingStatus.textContent = "请先创建预约。";
+    return;
+  }
+
+  await api("/api/bookings/manual-payment-submitted", {
+    method: "POST",
+    body: JSON.stringify({
+      bookingId: state.pendingPaymentBookingId,
+    }),
+  });
+  paymentGatewayMessage.textContent = "已提交人工确认，客服与管理员核对到账后会确认预约。";
+  bookingStatus.textContent = "已通知管理员人工确认预约金，请等待确认结果。";
+  await renderBookings();
+  await renderNotifications();
 }
 
 function fillTeacherProfile(profile) {
@@ -254,6 +320,11 @@ async function loadBootstrap() {
     payload.slotOptions.map((slot) => ({ value: slot, label: slot })),
     null,
   );
+
+  if (payload.supportContact) {
+    supportContactName.textContent = payload.supportContact.name;
+    supportContactId.textContent = payload.supportContact.wechatId;
+  }
 }
 
 async function loadSession() {
@@ -459,9 +530,64 @@ function renderBookingList(container, bookings, emptyText) {
         <p><strong>上门地址：</strong>${booking.address}</p>
         <p><strong>支付方式：</strong>${formatPaymentMethod(booking.paymentMethod)}</p>
         <p><strong>预约金：</strong>${formatCurrency(booking.depositAmount)}，支付成功后不退还</p>
+        <p><strong>支付状态：</strong>${formatDepositStatus(booking.depositStatus)} · ${formatGatewayStatus(booking.paymentGatewayStatus)}</p>
       </div>
     `;
     container.append(card);
+  });
+}
+
+function renderAdminBookingList(bookings) {
+  adminBookingList.innerHTML = "";
+
+  if (!bookings.length) {
+    adminBookingList.innerHTML = '<div class="empty-state">暂无预约记录。</div>';
+    return;
+  }
+
+  bookings.forEach((booking) => {
+    const card = document.createElement("article");
+    card.className = "record-card";
+    card.innerHTML = `
+      <div class="record-head">
+        <div>
+          <h4>${booking.studentName} 与 ${booking.teacherName}</h4>
+          <p class="booking-meta">${formatLongDate(booking.date)} · ${booking.time}</p>
+        </div>
+        <span class="tag">${formatDepositStatus(booking.depositStatus)} · ${formatGatewayStatus(booking.paymentGatewayStatus)}</span>
+      </div>
+      <div class="record-details">
+        <p><strong>手机号：</strong>${booking.studentPhone}</p>
+        <p><strong>上门地址：</strong>${booking.address}</p>
+        <p><strong>预约金：</strong>${formatCurrency(booking.depositAmount)}，尾款 ${formatCurrency(booking.remainingAmount)}</p>
+        <p><strong>学生备注：</strong>${booking.goalNotes}</p>
+      </div>
+      <div class="admin-booking-actions">
+        ${
+          booking.depositStatus !== "paid"
+            ? `<button class="primary-button admin-confirm-button" type="button" data-booking-id="${booking.id}">确认收款并确认预约</button>`
+            : '<span class="helper-text">该预约已确认成功。</span>'
+        }
+      </div>
+    `;
+    adminBookingList.append(card);
+  });
+
+  adminBookingList.querySelectorAll(".admin-confirm-button").forEach((button) => {
+    button.addEventListener("click", async () => {
+      try {
+        await api("/api/admin/bookings/confirm-payment", {
+          method: "POST",
+          body: JSON.stringify({
+            bookingId: button.dataset.bookingId,
+          }),
+        });
+        await renderBookings();
+        await renderNotifications();
+      } catch (error) {
+        authStatus.textContent = error.message;
+      }
+    });
   });
 }
 
@@ -495,7 +621,7 @@ async function renderBookings() {
     const overview = await api("/api/admin/overview", { method: "GET" });
     adminTeacherCount.textContent = overview.teachers.length;
     adminStudentCount.textContent = overview.students.length;
-    adminBookingCount.textContent = overview.bookings.length;
+    adminBookingCount.textContent = overview.bookings.filter((booking) => booking.depositStatus === "paid").length;
 
     adminTeacherList.innerHTML = overview.teachers.length
       ? overview.teachers
@@ -544,7 +670,7 @@ async function renderBookings() {
           .join("")
       : '<div class="empty-state">暂无已注册学生。</div>';
 
-    renderBookingList(adminBookingList, overview.bookings, "暂无成功预约。");
+    renderAdminBookingList(overview.bookings);
     return;
   }
 
@@ -647,6 +773,7 @@ async function handleAuth() {
 
 async function handleLogout() {
   await api("/api/auth/logout", { method: "POST" });
+  resetPaymentSheet();
   state.sessionUser = null;
   state.currentProfile = null;
   state.selectedSlot = null;
@@ -665,12 +792,12 @@ async function handleBooking(event) {
 
   const paymentMethod = getSelectedPaymentMethod();
   if (!paymentMethod) {
-    bookingStatus.textContent = "请选择微信支付或支付宝。";
+    bookingStatus.textContent = "请选择微信支付。";
     return;
   }
 
   try {
-    await api("/api/bookings", {
+    const payload = await api("/api/bookings", {
       method: "POST",
       body: JSON.stringify({
         teacherId: state.selectedSlot.teacherId,
@@ -682,11 +809,10 @@ async function handleBooking(event) {
         paymentMethod,
       }),
     });
-    state.selectedSlot = null;
-    renderSelectedSlot();
-    bookingForm.reset();
-    bookingStatus.textContent = `预约成功，已通过${formatPaymentMethod(paymentMethod)}支付 20% 预约金。老师和管理员已收到通知。`;
-    await renderTeacherCards();
+    state.pendingPaymentBookingId = payload.booking.id;
+    paymentSheet.classList.remove("hidden");
+    paymentGatewayMessage.textContent = "请添加客服微信完成预约金支付，然后提交人工确认。";
+    bookingStatus.textContent = "预约已创建，请添加客服微信完成预约金支付。";
     await renderBookings();
     await renderNotifications();
   } catch (error) {
@@ -771,6 +897,22 @@ courseFilter.addEventListener("change", renderTeacherCards);
 bookingForm.addEventListener("submit", handleBooking);
 addSlotButton.addEventListener("click", addScheduleSlot);
 teacherManagerSelect.addEventListener("change", renderSchedule);
+paymentRefresh.addEventListener("click", () => {
+  submitManualPaymentConfirmation().catch((error) => {
+    paymentGatewayMessage.textContent = error.message;
+  });
+});
+copySupportWechat.addEventListener("click", async () => {
+  const value = supportContactId.textContent.trim();
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      paymentGatewayMessage.textContent = "客服微信号已复制，请前往微信添加客服。";
+      return;
+    }
+  } catch {}
+  paymentGatewayMessage.textContent = `请手动复制客服微信号：${value}`;
+});
 
 async function init() {
   setSelectedRole("student");

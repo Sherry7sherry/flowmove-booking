@@ -226,7 +226,7 @@
               <article class="brief-card">
                 <p class="panel-label">预约金说明</p>
                 <h3>支付 20% 预约金后锁定课程</h3>
-                <p>预约金支付成功后不退还。当前体验版会直接模拟支付成功，并给老师与管理员生成通知。</p>
+                <p>提交预约后请添加客服微信完成预约金支付。客服核对到账后，管理员会手动确认预约，并同步通知老师与学生。</p>
               </article>
             </aside>
 
@@ -293,23 +293,16 @@
                     <span class="step-badge">04</span>
                     <div>
                       <strong>支付方式</strong>
-                      <p>支付 20% 课程预约金，支付成功后不退还</p>
+                      <p>支付 20% 课程预约金后锁定课程，支付成功后不退还</p>
                     </div>
                   </div>
                   <label>预约金支付方式</label>
                   <div class="payment-options" id="payment-options">
                     <label class="payment-option">
-                      <input type="radio" name="payment-method" value="wechat" />
+                      <input type="radio" name="payment-method" value="wechat" checked />
                       <span>
                         <strong>微信支付</strong>
-                        <small>支付预约金并锁定课程</small>
-                      </span>
-                    </label>
-                    <label class="payment-option">
-                      <input type="radio" name="payment-method" value="alipay" />
-                      <span>
-                        <strong>支付宝</strong>
-                        <small>支付预约金并锁定课程</small>
+                        <small>添加客服微信支付预约金，管理员人工确认后锁定课程</small>
                       </span>
                     </label>
                   </div>
@@ -317,9 +310,38 @@
 
                 <div class="booking-submit-bar">
                   <div class="deposit-summary" id="deposit-summary">请选择时段后查看本次课程预约金金额。</div>
-                  <button class="primary-button block-button" type="submit">确认预约并支付 20% 预约金</button>
+                  <button class="primary-button block-button" type="submit">确认预约并联系微信客服支付</button>
                   <p class="helper-text" id="booking-status">登录后即可预约并支付预约金。</p>
                 </div>
+
+                <section class="payment-sheet hidden" id="payment-sheet" aria-live="polite">
+                  <div class="payment-sheet-head">
+                    <div>
+                      <p class="panel-label">联系客服支付</p>
+                      <h4>添加客服微信，完成预约金支付</h4>
+                    </div>
+                    <span class="tag" id="payment-scene-label">人工确认</span>
+                  </div>
+                  <div class="payment-gateway-message" id="payment-gateway-message">
+                    请添加客服微信，完成 20% 预约金支付后再提交确认。
+                  </div>
+                  <div class="payment-qr-wrap" id="payment-qr-wrap">
+                    <div class="payment-qr-frame">
+                      <div id="payment-qr-image" class="payment-qr-image">
+                        <img id="support-contact-qr" class="support-contact-qr" src="/assets/customer-service-wechat.jpg" alt="客服微信二维码" />
+                      </div>
+                    </div>
+                    <p class="helper-text">截图或扫码添加客服后，请备注预约姓名、老师姓名和上课时间，方便客服核对预约金。</p>
+                  </div>
+                  <div class="payment-mobile-wrap" id="payment-mobile-wrap">
+                    <p>客服昵称：<strong id="support-contact-name">微信客服</strong></p>
+                    <p>客服微信号：<strong id="support-contact-id">flowmove-service</strong></p>
+                    <button id="copy-support-wechat" class="secondary-button" type="button">复制客服微信号</button>
+                  </div>
+                  <div class="payment-sheet-actions">
+                    <button class="secondary-button" id="payment-refresh" type="button">我已联系并完成支付，提交人工确认</button>
+                  </div>
+                </section>
               </form>
             </article>
 
@@ -333,7 +355,7 @@
           <section class="records-panel">
             <div class="records-header">
               <p class="panel-label">我的预约</p>
-              <span class="helper-text">已支付预约金的课程会展示在这里。</span>
+              <span class="helper-text">这里会显示待人工确认和已确认的预约。</span>
             </div>
             <div class="booking-list" id="student-booking-list"></div>
           </section>
@@ -475,6 +497,7 @@
       </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>
