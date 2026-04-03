@@ -2,7 +2,11 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="format-detection" content="telephone=no, email=no, address=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#f5efe6" />
     <title>FlowMove 上门普拉提/瑜伽约课系统</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,7 +18,7 @@
   </head>
   <body>
     <div class="page-shell">
-      <header class="hero">
+      <header class="hero h5-screen" id="welcome-screen" data-screen="welcome-screen">
         <nav class="topbar">
           <div class="brand">
             <span class="brand-mark">FM</span>
@@ -106,13 +110,16 @@
       </header>
 
       <main>
-        <section class="auth-portal" id="auth-portal">
+        <section class="auth-portal h5-screen hidden-screen" id="auth-portal" data-screen="auth-portal">
           <div class="section-heading compact-heading">
             <div>
               <p class="kicker">注册 / 登录</p>
               <h2>先选择身份，再用手机号进入自己的主页。</h2>
             </div>
-            <p class="section-copy">当前版本为体验版，不做短信验证码，使用姓名 + 手机号完成注册或登录。</p>
+            <div class="page-toolbar">
+              <p class="section-copy">当前版本为体验版，不做短信验证码，使用姓名 + 手机号完成注册或登录。</p>
+              <a class="ghost-button compact-button" href="#welcome-screen">返回首页</a>
+            </div>
           </div>
 
           <section class="auth-layout">
@@ -176,13 +183,16 @@
           </section>
         </section>
 
-        <section class="workspace hidden" id="student-workspace">
+        <section class="workspace hidden hidden-screen h5-screen" id="student-workspace" data-screen="student-workspace">
           <div class="workspace-head">
             <div>
               <p class="kicker">学生主页</p>
               <h2>先完善资料，再选老师和时间。</h2>
             </div>
-            <p class="section-copy">预约后需支付 20% 课程预约金，支付成功后不退还，老师和管理员都会收到通知。</p>
+            <div class="page-toolbar">
+              <p class="section-copy">预约后需支付 20% 课程预约金，支付成功后不退还，老师和管理员都会收到通知。</p>
+              <a class="ghost-button compact-button" href="#auth-portal">切换身份</a>
+            </div>
           </div>
 
           <section class="dashboard-grid">
@@ -361,13 +371,16 @@
           </section>
         </section>
 
-        <section class="workspace hidden" id="teacher-workspace">
+        <section class="workspace hidden hidden-screen h5-screen" id="teacher-workspace" data-screen="teacher-workspace">
           <div class="workspace-head">
             <div>
               <p class="kicker">老师主页</p>
               <h2>维护自己的资料、区域、价格和未来 3 天排班。</h2>
             </div>
-            <p class="section-copy">学生支付预约金成功后，你会在通知区看到新预约提醒。</p>
+            <div class="page-toolbar">
+              <p class="section-copy">学生支付预约金成功后，你会在通知区看到新预约提醒。</p>
+              <a class="ghost-button compact-button" href="#auth-portal">切换身份</a>
+            </div>
           </div>
 
           <section class="insight-layout">
@@ -441,13 +454,16 @@
           </section>
         </section>
 
-        <section class="workspace hidden" id="admin-workspace">
+        <section class="workspace hidden hidden-screen h5-screen" id="admin-workspace" data-screen="admin-workspace">
           <div class="workspace-head">
             <div>
               <p class="kicker">管理员主页</p>
               <h2>查看老师、学生和已支付预约金的预约信息。</h2>
             </div>
-            <p class="section-copy">管理员会收到每一笔成功预约并支付预约金的通知。</p>
+            <div class="page-toolbar">
+              <p class="section-copy">管理员会收到每一笔成功预约并支付预约金的通知。</p>
+              <a class="ghost-button compact-button" href="#auth-portal">切换身份</a>
+            </div>
           </div>
 
           <section class="stats-strip admin-stats" aria-label="管理员总览">

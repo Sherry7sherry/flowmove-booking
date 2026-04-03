@@ -23,10 +23,12 @@ const adminPasswordInput = document.querySelector("#admin-password");
 const authSubmit = document.querySelector("#auth-submit");
 const authStatus = document.querySelector("#auth-status");
 const logoutButton = document.querySelector("#logout-button");
+const screens = Array.from(document.querySelectorAll("[data-screen]"));
 
 const studentWorkspace = document.querySelector("#student-workspace");
 const teacherWorkspace = document.querySelector("#teacher-workspace");
 const adminWorkspace = document.querySelector("#admin-workspace");
+const welcomeScreen = document.querySelector("#welcome-screen");
 
 const teacherFilter = document.querySelector("#teacher-filter");
 const dateFilter = document.querySelector("#date-filter");
@@ -205,6 +207,57 @@ function setSelectedRole(role) {
   });
   phoneAuthFields.classList.toggle("hidden", role === "admin");
   adminAuthFields.classList.toggle("hidden", role !== "admin");
+}
+
+function getWorkspaceScreenId(role) {
+  if (role === "student") {
+    return "student-workspace";
+  }
+
+  if (role === "teacher") {
+    return "teacher-workspace";
+  }
+
+  if (role === "admin") {
+    return "admin-workspace";
+  }
+
+  return "auth-portal";
+}
+
+function setScreen(screenId, updateHash = true) {
+  const target = screens.find((screen) => screen.id === screenId) || welcomeScreen;
+  screens.forEach((screen) => {
+    screen.classList.toggle("hidden-screen", screen !== target);
+  });
+
+  if (updateHash && window.location.hash !== `#${target.id}`) {
+    window.location.hash = target.id;
+  }
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function syncScreenFromHash() {
+  const requested = window.location.hash.replace("#", "") || "welcome-screen";
+
+  if (!state.sessionUser) {
+    if (["student-workspace", "teacher-workspace", "admin-workspace"].includes(requested)) {
+      setScreen("auth-portal", requested !== "auth-portal");
+      return;
+    }
+
+    setScreen(requested === "auth-portal" ? "auth-portal" : "welcome-screen", false);
+    return;
+  }
+
+  const workspaceScreen = getWorkspaceScreenId(state.sessionUser.role);
+  if (requested !== workspaceScreen) {
+    setScreen(workspaceScreen, requested !== workspaceScreen);
+    return;
+  }
+
+  setScreen(workspaceScreen, false);
 }
 
 function showWorkspace(role) {
@@ -766,6 +819,7 @@ async function handleAuth() {
     logoutButton.classList.remove("hidden");
     setAuthMessage(`${payload.user.name} 已进入${payload.user.role === "student" ? "学生" : payload.user.role === "teacher" ? "老师" : "管理员"}主页。`);
     await hydrateWorkspace();
+    setScreen(getWorkspaceScreenId(payload.user.role));
   } catch (error) {
     setAuthMessage(error.message);
   }
@@ -780,6 +834,7 @@ async function handleLogout() {
   logoutButton.classList.add("hidden");
   showWorkspace(null);
   setAuthMessage("已退出登录。");
+  setScreen("auth-portal");
 }
 
 async function handleBooking(event) {
@@ -913,6 +968,7 @@ copySupportWechat.addEventListener("click", async () => {
   } catch {}
   paymentGatewayMessage.textContent = `请手动复制客服微信号：${value}`;
 });
+window.addEventListener("hashchange", syncScreenFromHash);
 
 async function init() {
   setSelectedRole("student");
@@ -931,8 +987,10 @@ async function init() {
     logoutButton.classList.remove("hidden");
     setAuthMessage(`${state.sessionUser.name} 已登录。`);
     await hydrateWorkspace();
+    setScreen(getWorkspaceScreenId(state.sessionUser.role), false);
   } else {
     showWorkspace(null);
+    syncScreenFromHash();
   }
 }
 
